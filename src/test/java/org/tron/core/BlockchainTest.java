@@ -34,10 +34,10 @@ import org.tron.common.storage.leveldb.LevelDbDataSourceImpl;
 import org.tron.common.utils.ByteArray;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
-import org.tron.protos.Protocal.Block;
+import org.tron.protos.Protocal;
 import org.tron.protos.Protocal.TXOutputs;
-import org.tron.protos.Protocal.Transaction;
-
+import org.tron.protos.core.TronBlock.Block;
+import org.tron.protos.core.TronTransaction.Transaction;
 
 public class BlockchainTest {
 
@@ -86,7 +86,7 @@ public class BlockchainTest {
 
   @Test
   public void testFindTransaction() {
-    Transaction transaction = blockchain.findTransaction(ByteString
+    Protocal.Transaction transaction = blockchain.findTransaction(ByteString
         .copyFrom(
             ByteArray.fromHexString(
                 "15f3988aa8d56eab3bfca45144bad77fc60acce50437a0a9d794a03a83c15c5e")));
@@ -105,9 +105,9 @@ public class BlockchainTest {
     ).thenReturn(spendableOutputs);
     Mockito.when(mockUtxoSet.getBlockchain()).thenReturn(blockchain);
 
-    Transaction transaction = TransactionCapsule.newTransaction(wallet,
+    Protocal.Transaction transaction = TransactionCapsule.newTransaction(wallet,
         "fd0f3c8ab4877f0fd96cd156b0ad42ea7aa82c31", testAmount, mockUtxoSet);
-    List<Transaction> transactions = new ArrayList<>();
+    List<Protocal.Transaction> transactions = new ArrayList<>();
     transactions.add(transaction);
     blockchain.addBlock(BlockCapsule.newBlock(transactions, ByteString
         .copyFrom(new byte[]{1}), ByteString
@@ -123,7 +123,7 @@ public class BlockchainTest {
 
     Wallet wallet = new Wallet();
 
-    Block block = BlockCapsule.newBlock(null, parentHash,
+    Protocal.Block block = BlockCapsule.newBlock(null, parentHash,
         difficulty, 0);
     LevelDbDataSourceImpl levelDbDataSource = new LevelDbDataSourceImpl(Constant.TEST,
         Constant.OUTPUT_DIR,
