@@ -86,13 +86,6 @@ public class BlockchainTest {
   }
 
   @Test
-  public void testBlockchain() {
-    logger.info("test blockchain: lastHash = {}, currentHash = {}",
-        ByteArray.toHexString(blockchain.getLastHash()), ByteArray
-            .toHexString(blockchain.getCurrentHash()));
-  }
-
-  @Test
   public void testBlockchainNew() {
     logger.info("test blockchain new: lastHash = {}", ByteArray
         .toHexString(blockchain.getLastHash()));
