@@ -15,8 +15,10 @@
 
 package org.tron.core;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.tron.core.Constant.LAST_HASH;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -59,8 +61,22 @@ public class BlockchainTest {
     Mockito.when(mockBlockDB.getData(any())).thenReturn(ByteArray.fromString(null));
     blockchain = new Blockchain(mockBlockDB);
     assertTrue(blockchain.getLastHash() != null);
-    assertTrue(blockchain.getCurrentHash() == blockchain.getLastHash());
-    Mockito.verify(mockBlockDB).putData(Constant.LAST_HASH, blockchain.getLastHash());
+    assertEquals(blockchain.getCurrentHash(), blockchain.getLastHash());
+    Mockito.verify(mockBlockDB).putData(LAST_HASH, blockchain.getLastHash());
+
+    System.out.println(ByteArray.toHexString(blockchain.getLastHash()));
+    logger.info("test blockchain: lastHash = {}, currentHash = {}",
+        ByteArray.toHexString(blockchain.getLastHash()), ByteArray
+            .toHexString(blockchain.getCurrentHash()));
+  }
+
+  @Test
+  public void testBlockchainConstructorForExistingBlockchain() {
+    byte[] testHash = ByteArray.fromHexString("83deec1d17cc829542c46b0a4fec523f62ee801d57897cb794af80a7c3d7e87b");
+    Mockito.when(mockBlockDB.getData(LAST_HASH)).thenReturn(testHash);
+    blockchain = new Blockchain(mockBlockDB);
+    assertEquals(testHash, blockchain.getLastHash());
+    assertEquals(testHash, blockchain.getCurrentHash());
 
     logger.info("test blockchain: lastHash = {}, currentHash = {}",
         ByteArray.toHexString(blockchain.getLastHash()), ByteArray
