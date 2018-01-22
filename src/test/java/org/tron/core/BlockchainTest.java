@@ -17,6 +17,7 @@ package org.tron.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.any;
 import static org.tron.core.Constant.LAST_HASH;
 
@@ -77,6 +78,7 @@ public class BlockchainTest {
     blockchain = new Blockchain(mockBlockDB);
     assertEquals(testHash, blockchain.getLastHash());
     assertEquals(testHash, blockchain.getCurrentHash());
+    Mockito.verify(mockBlockDB, Mockito.never()).putData(any(), eq(testHash));
 
     logger.info("test blockchain: lastHash = {}, currentHash = {}",
         ByteArray.toHexString(blockchain.getLastHash()), ByteArray
