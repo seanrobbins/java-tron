@@ -128,23 +128,6 @@ public class Blockchain {
   }
 
   /**
-   * Checks if the database file exists.
-   *
-   * @return boolean
-   */
-  public static boolean dbExists() {
-    if (Constant.NORMAL == parentName) {
-      parentName = Configer.getConf(Constant.NORMAL_CONF).getString(Constant.DATABASE_DIR);
-    } else {
-      parentName = Configer.getConf(Constant.TEST_CONF).getString(Constant.DATABASE_DIR);
-
-    }
-    File file = new File(Paths.get(parentName, BLOCK_DB_NAME).toString());
-    return file.exists();
-  }
-
-  /**
-   * find transaction by id.
    *
    * @param id ByteString id
    * @return {@link Transaction}
