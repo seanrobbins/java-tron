@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -39,13 +41,34 @@ import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocal;
 import org.tron.protos.Protocal.TXOutputs;
 import org.tron.protos.core.TronBlock.Block;
-import org.tron.protos.core.TronTransaction.Transaction;
+import org.tron.protos.core.TronBlockHeader.BlockHeader;
 
 public class BlockchainTest {
 
   private static final Logger logger = LoggerFactory.getLogger("Test");
   private static Blockchain blockchain;
   private static LevelDbDataSourceImpl mockBlockDB;
+  private String testHash = "15f3988aa8d56eab3bfca45144bad77fc60acce50437a0a9d794a03a83c15c5e";
+  private Supplier<Protocal.Block> newTestBlock = () -> {
+    ByteString randomInputTXId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
+    Protocal.TXInput testTxInput = Protocal.TXInput.getDefaultInstance().toBuilder()
+        .setTxID(randomInputTXId)
+        .build();
+
+    ByteString randomOutputTXId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
+    Protocal.TXOutput testTxOutput = Protocal.TXOutput.getDefaultInstance().toBuilder().setPubKeyHash(randomOutputTXId).build();
+
+    ByteString randomTxId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
+    Protocal.Transaction testTransaction = Protocal.Transaction.newBuilder()
+        .setId(randomTxId)
+        .addVin(testTxInput)
+        .addVout(testTxOutput)
+        .build();
+
+    Protocal.BlockHeader testBlockHeader = Protocal.BlockHeader.newBuilder().setHash(ByteString.copyFromUtf8(UUID.randomUUID().toString())).build();
+
+    return Protocal.Block.newBuilder().setBlockHeader(testBlockHeader).addTransactions(testTransaction).build();
+  };
 
   /**
    * setup fo BlockchainTest.
@@ -53,7 +76,7 @@ public class BlockchainTest {
   @Before
   public void setup() throws IOException {
     mockBlockDB = Mockito.mock(LevelDbDataSourceImpl.class);
-    Mockito.when(mockBlockDB.getData(any())).thenReturn(ByteArray.fromString(""));
+    Mockito.when(mockBlockDB.getData(LAST_HASH)).thenReturn(ByteArray.fromString(testHash));
     blockchain = new Blockchain(mockBlockDB);
   }
 
@@ -72,13 +95,20 @@ public class BlockchainTest {
   }
 
   @Test
-  public void testBlockchainConstructorForExistingBlockchain() {
+  public void testBlockchainConstructorForExistingBlockchain()
+      throws InvalidProtocolBufferException {
     byte[] testHash = ByteArray.fromHexString("83deec1d17cc829542c46b0a4fec523f62ee801d57897cb794af80a7c3d7e87b");
+    Protocal.Block testBlock = newTestBlock.get();
+    Mockito.when(mockBlockDB.getData(testHash)).thenReturn(testBlock.toByteArray());
+
     Mockito.when(mockBlockDB.getData(LAST_HASH)).thenReturn(testHash);
     blockchain = new Blockchain(mockBlockDB);
     assertEquals(testHash, blockchain.getLastHash());
     assertEquals(testHash, blockchain.getCurrentHash());
     Mockito.verify(mockBlockDB, Mockito.never()).putData(any(), eq(testHash));
+
+    byte[] blockBytes = blockchain.getBlockDB().getData(blockchain.getLastHash());
+    assertEquals(testBlock, Protocal.Block.parseFrom(blockBytes));
 
     logger.info("test blockchain: lastHash = {}, currentHash = {}",
         ByteArray.toHexString(blockchain.getLastHash()), ByteArray
@@ -86,31 +116,31 @@ public class BlockchainTest {
   }
 
   @Test
-  public void testBlockchainNew() {
-    logger.info("test blockchain new: lastHash = {}", ByteArray
-        .toHexString(blockchain.getLastHash()));
+  public void testFindTransaction() {
+    Protocal.Block testBlock = newTestBlock.get();
+    Protocal.Transaction testTransaction = testBlock.getTransactions(0);
+    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testHash))).thenReturn(testBlock.toByteArray());
 
-    byte[] blockBytes = blockchain.getBlockDB().getData(blockchain.getLastHash());
+    Protocal.Transaction result = blockchain.findTransaction(testTransaction.getId());
 
-    try {
-      Block block = Block.parseFrom(blockBytes);
-
-      for (Transaction transaction : block.getTransactionsList()) {
-        logger.info("transaction id = {}",
-            ByteArray.toHexString(transaction.getId().toByteArray()));
-      }
-    } catch (InvalidProtocolBufferException e) {
-      e.printStackTrace();
-    }
+    assertEquals(testTransaction.getId(), result.getId());
+    assertEquals(testTransaction.getVin(0).getTxID(), result.getVin(0).getTxID());
+    assertEquals(testTransaction.getVout(0).getPubKeyHash(), result.getVout(0).getPubKeyHash());
+    logger.info("{}", TransactionCapsule.toPrintString(result));
   }
 
   @Test
-  public void testFindTransaction() {
-    Protocal.Transaction transaction = blockchain.findTransaction(ByteString
-        .copyFrom(
-            ByteArray.fromHexString(
-                "15f3988aa8d56eab3bfca45144bad77fc60acce50437a0a9d794a03a83c15c5e")));
-    logger.info("{}", TransactionCapsule.toPrintString(transaction));
+  public void testFindTransactionReturnsAnEmptyTransactionWhenTransactionIsNotFound() {
+    ByteString randomTxId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
+    Block testBlock = Block.getDefaultInstance();
+    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testHash))).thenReturn(testBlock.toByteArray());
+
+    Protocal.Transaction result = blockchain.findTransaction(randomTxId);
+
+    assertTrue(result.getSerializedSize() == 0);
+    assertTrue(result.getVinCount() == 0);
+    assertTrue(result.getVoutCount() == 0);
+    logger.info("{}", TransactionCapsule.toPrintString(result));
   }
 
   @Test
