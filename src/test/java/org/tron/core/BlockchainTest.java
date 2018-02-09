@@ -41,7 +41,6 @@ import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocal;
 import org.tron.protos.Protocal.TXOutputs;
 import org.tron.protos.core.TronBlock.Block;
-import org.tron.protos.core.TronBlockHeader.BlockHeader;
 
 public class BlockchainTest {
 
@@ -145,6 +144,9 @@ public class BlockchainTest {
 
   @Test
   public void testFindUtxo() {
+    Protocal.Block testBlock = newTestBlock.get();
+    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testHash))).thenReturn(testBlock.toByteArray());
+
     long testAmount = 10;
     Wallet wallet = new Wallet();
     SpendableOutputs spendableOutputs = new SpendableOutputs();
