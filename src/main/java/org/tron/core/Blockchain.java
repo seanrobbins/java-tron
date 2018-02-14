@@ -15,10 +15,20 @@
 
 package org.tron.core;
 
+import static org.tron.core.Constant.LAST_HASH;
+
 import com.alibaba.fastjson.JSON;
 import com.google.common.io.ByteStreams;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.inject.Named;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tron.common.crypto.ECKey;
@@ -26,7 +36,6 @@ import org.tron.common.storage.leveldb.LevelDbDataSourceImpl;
 import org.tron.common.utils.ByteArray;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
-import org.tron.core.config.Configer;
 import org.tron.core.events.BlockchainListener;
 import org.tron.core.peer.Peer;
 import org.tron.protos.Protocal.*;
