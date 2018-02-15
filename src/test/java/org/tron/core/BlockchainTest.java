@@ -16,6 +16,7 @@
 package org.tron.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.any;
@@ -182,6 +183,41 @@ public class BlockchainTest {
     assertEquals(2, utxo.size());
     logger.info("{}", utxo);
   }
+
+  @Test
+  public void testFindUtxoDoesNotReturnSpentTransactions() {
+    Block testGenesisBlock = mockGenesisBlock(testGenesisBlockHash);
+    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testGenesisBlockHash))).thenReturn(testGenesisBlock.toByteArray());
+
+    String testLastBlockHash = "26g4099bb9e67fbc4bgdb45155cbe88gd71bddf61548b1b0e805b14b94d26d6e";
+    Block testLastBlock = newTestBlock(testLastBlockHash, testGenesisBlockHash);
+    testLastBlock = testLastBlock.toBuilder().addTransactions(
+        testLastBlock.getTransactions(0).toBuilder()
+            .clearVin().addVin(
+        TXInput.getDefaultInstance().toBuilder()
+            .setTxID(testGenesisBlock.getTransactions(0).getId())
+            .setVout(0)
+            .build()
+        )
+            .build()
+    ).build();
+
+    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testLastBlockHash))).thenReturn(testLastBlock.toByteArray());
+    newBlockchain(ByteArray.fromString(testLastBlockHash));
+    HashMap<String, TXOutputs> utxo = blockchain.findUtxo();
+
+    TXOutput lastBlockOutputs = utxo.get(ByteArray.toHexString(
+        testLastBlock.getTransactions(0).getId().toByteArray())).getOutputs(0);
+    assertEquals(testLastBlock.getTransactions(0).getVout(0), lastBlockOutputs);
+
+    TXOutputs genesisBlockOutputs = utxo.get(ByteArray.toHexString(
+        testGenesisBlock.getTransactions(0).getId().toByteArray()));
+    assertNull(genesisBlockOutputs);
+
+    assertEquals(1, utxo.size());
+    logger.info("{}", utxo);
+  }
+
 
   @Test
   public void testAddBlockToChain() {
