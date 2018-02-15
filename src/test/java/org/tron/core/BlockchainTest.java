@@ -223,7 +223,6 @@ public class BlockchainTest {
     logger.info("{}", utxo);
   }
 
-
   @Test
   public void testAddBlockToChain() {
     String testNewBlockHash = "26g4099bb9e67fbc4bgdb45155cbe88gd71bddf61548b1b0e805b14b94d26d6e";

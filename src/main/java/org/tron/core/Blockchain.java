@@ -40,20 +40,6 @@ import org.tron.core.events.BlockchainListener;
 import org.tron.core.peer.Peer;
 import org.tron.protos.Protocal.*;
 
-import javax.inject.Named;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.tron.core.Constant.BLOCK_DB_NAME;
-import static org.tron.core.Constant.LAST_HASH;
-
 
 public class Blockchain {
 
@@ -87,7 +73,7 @@ public class Blockchain {
       this.lastHash = genesisBlock.getBlockHeader().getHash().toByteArray();
       this.currentHash = this.lastHash;
 
-      persistGenesisBlockToDB(blockDb, genesisBlock);
+      persistBlockToDB(blockDb, genesisBlock);
       persistLastHash(blockDb, genesisBlock);
 
       addGenesisBlockToListeners(genesisBlock);
@@ -110,10 +96,8 @@ public class Blockchain {
     blockDb.putData(LAST_HASH, lastHash);
   }
 
-  private void persistGenesisBlockToDB(@Named("block") LevelDbDataSourceImpl blockDB,
-      Block genesisBlock) {
-    blockDB.putData(genesisBlock.getBlockHeader().getHash().toByteArray(),
-        genesisBlock.toByteArray());
+  private void persistBlockToDB(@Named("block") LevelDbDataSourceImpl blockDB, Block block) {
+    blockDB.putData(block.getBlockHeader().getHash().toByteArray(), block.toByteArray());
   }
 
   private List<Transaction> buildTransactionsFrom(GenesisBlockLoader genesisBlockLoader) {
@@ -230,7 +214,7 @@ public class Blockchain {
       return;
     }
 
-    persistGenesisBlockToDB(blockDb, block);
+    persistBlockToDB(blockDb, block);
 
     byte[] lastHash = blockDb.getData(ByteArray.fromString("lashHash"));
     byte[] lastBlockData = blockDb.getData(lastHash);
