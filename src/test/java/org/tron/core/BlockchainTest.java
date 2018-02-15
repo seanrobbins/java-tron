@@ -49,7 +49,8 @@ public class BlockchainTest {
   private static final Logger logger = LoggerFactory.getLogger("Test");
   private static Blockchain blockchain;
   private static LevelDbDataSourceImpl mockBlockDB;
-  private String testGenesisBlockHash = "15f3988aa8d56eab3bfca45144bad77fc60acce50437a0a9d794a03a83c15c5e";
+  private String testGenesisBlockHash;
+  private byte[] testGenesisBlockHashByteArray;
 
   private Block mockGenesisBlock(String hash) {
     return newTestBlock(hash, null);
@@ -59,7 +60,7 @@ public class BlockchainTest {
     ByteString randomInputTXId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
     TXInput testTxInput = TXInput.getDefaultInstance().toBuilder()
         .setTxID(randomInputTXId)
-        .setVout(10L)
+        .setVout(0L)
         .build();
 
     ByteString randomOutputTXId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
@@ -89,24 +90,23 @@ public class BlockchainTest {
    */
   @Before
   public void setup() throws IOException {
-    mockBlockDB = Mockito.mock(LevelDbDataSourceImpl.class);
-    newBlockchain(ByteArray.fromString(testGenesisBlockHash));
-  }
+    testGenesisBlockHash = "15f3988aa8d56eab3bfca45144bad77fc60acce50437a0a9d794a03a83c15c5e";
+    testGenesisBlockHashByteArray = ByteArray.fromHexString(testGenesisBlockHash);
 
-  private void newBlockchain(byte[] lastBlockHash) {
-    Mockito.when(mockBlockDB.getData(LAST_HASH)).thenReturn(lastBlockHash);
+    mockBlockDB = Mockito.mock(LevelDbDataSourceImpl.class);
+    Mockito.when(mockBlockDB.getData(LAST_HASH)).thenReturn(testGenesisBlockHashByteArray);
     blockchain = new Blockchain(mockBlockDB);
   }
 
   @Test
   public void testBlockchainConstructorForNewBlockchain() {
-    newBlockchain(null);
     Mockito.when(mockBlockDB.getData(any())).thenReturn(ByteArray.fromString(null));
+
+    blockchain = new Blockchain(mockBlockDB);
     assertTrue(blockchain.getLastHash() != null);
     assertEquals(blockchain.getCurrentHash(), blockchain.getLastHash());
     Mockito.verify(mockBlockDB).putData(LAST_HASH, blockchain.getLastHash());
 
-    System.out.println(ByteArray.toHexString(blockchain.getLastHash()));
     logger.info("test blockchain: lastHash = {}, currentHash = {}",
         ByteArray.toHexString(blockchain.getLastHash()), ByteArray
             .toHexString(blockchain.getCurrentHash()));
@@ -116,13 +116,13 @@ public class BlockchainTest {
   public void testBlockchainConstructorForExistingBlockchain()
       throws InvalidProtocolBufferException {
     Block testBlock = mockGenesisBlock(testGenesisBlockHash);
-    byte[] hash = ByteArray.fromHexString(testGenesisBlockHash);
-    Mockito.when(mockBlockDB.getData(hash)).thenReturn(testBlock.toByteArray());
+    Mockito.when(mockBlockDB.getData(testGenesisBlockHashByteArray)).thenReturn(testBlock.toByteArray());
 
-    newBlockchain(hash);
-    assertEquals(hash, blockchain.getLastHash());
-    assertEquals(hash, blockchain.getCurrentHash());
-    Mockito.verify(mockBlockDB, Mockito.never()).putData(any(), eq(hash));
+    blockchain = new Blockchain(mockBlockDB);
+
+    assertEquals(testGenesisBlockHashByteArray, blockchain.getLastHash());
+    assertEquals(testGenesisBlockHashByteArray, blockchain.getCurrentHash());
+    Mockito.verify(mockBlockDB, Mockito.never()).putData(any(), eq(testGenesisBlockHashByteArray));
 
     byte[] blockBytes = blockchain.getBlockDB().getData(blockchain.getLastHash());
     assertEquals(testBlock, Block.parseFrom(blockBytes));
@@ -136,7 +136,7 @@ public class BlockchainTest {
   public void testFindTransaction() {
     Block testBlock = mockGenesisBlock(testGenesisBlockHash);
     Transaction testTransaction = testBlock.getTransactions(0);
-    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testGenesisBlockHash))).thenReturn(testBlock.toByteArray());
+    Mockito.when(mockBlockDB.getData(testGenesisBlockHashByteArray)).thenReturn(testBlock.toByteArray());
 
     Transaction result = blockchain.findTransaction(testTransaction.getId());
 
@@ -148,11 +148,11 @@ public class BlockchainTest {
 
   @Test
   public void testFindTransactionReturnsAnEmptyTransactionWhenTransactionIsNotFound() {
-    ByteString randomTxId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
-    Block testBlock = Block.getDefaultInstance();
-    Mockito.when(mockBlockDB.getData(ByteArray.fromString(testGenesisBlockHash))).thenReturn(testBlock.toByteArray());
+    Block testBlock = mockGenesisBlock(testGenesisBlockHash);
+    Mockito.when(mockBlockDB.getData(testGenesisBlockHashByteArray)).thenReturn(testBlock.toByteArray());
 
-    Transaction result = blockchain.findTransaction(randomTxId);
+    ByteString fakeTxId = ByteString.copyFrom(ByteArray.fromString(UUID.randomUUID().toString()));
+    Transaction result = blockchain.findTransaction(fakeTxId);
 
     assertTrue(result.getSerializedSize() == 0);
     assertTrue(result.getVinCount() == 0);
@@ -168,8 +168,10 @@ public class BlockchainTest {
     String testLastBlockHash = "26g4099bb9e67fbc4bgdb45155cbe88gd71bddf61548b1b0e805b14b94d26d6e";
     Block testLastBlock = newTestBlock(testLastBlockHash, testGenesisBlockHash);
     Mockito.when(mockBlockDB.getData(ByteArray.fromString(testLastBlockHash))).thenReturn(testLastBlock.toByteArray());
-    newBlockchain(ByteArray.fromString(testLastBlockHash));
 
+    byte[] lastBlockHashByteArray = ByteArray.fromString(testLastBlockHash);
+    blockchain.setLastHash(lastBlockHashByteArray);
+    blockchain.setCurrentHash(lastBlockHashByteArray);
     HashMap<String, TXOutputs> utxo = blockchain.findUtxo();
 
     TXOutput lastBlockOutputs = utxo.get(ByteArray.toHexString(
@@ -203,7 +205,10 @@ public class BlockchainTest {
     ).build();
 
     Mockito.when(mockBlockDB.getData(ByteArray.fromString(testLastBlockHash))).thenReturn(testLastBlock.toByteArray());
-    newBlockchain(ByteArray.fromString(testLastBlockHash));
+
+    byte[] lastBlockHashByteArray = ByteArray.fromString(testLastBlockHash);
+    blockchain.setLastHash(lastBlockHashByteArray);
+    blockchain.setCurrentHash(lastBlockHashByteArray);
     HashMap<String, TXOutputs> utxo = blockchain.findUtxo();
 
     TXOutput lastBlockOutputs = utxo.get(ByteArray.toHexString(
@@ -221,24 +226,10 @@ public class BlockchainTest {
 
   @Test
   public void testAddBlockToChain() {
-    ByteString parentHash = ByteString.copyFrom(ByteArray.fromHexString(
-        "0304f784e4e7bae517bcab94c3e0c9214fb4ac7ff9d7d5a937d1f40031f87b85"));
-    ByteString difficulty = ByteString.copyFrom(ByteArray.fromHexString("2001"));
+    String testNewBlockHash = "26g4099bb9e67fbc4bgdb45155cbe88gd71bddf61548b1b0e805b14b94d26d6e";
+    Block testBlock = newTestBlock(testNewBlockHash, testGenesisBlockHash);
 
-    Block block = BlockCapsule.newBlock(null, parentHash,
-        difficulty, 0);
-    LevelDbDataSourceImpl levelDbDataSource = new LevelDbDataSourceImpl(Constant.TEST,
-        Constant.OUTPUT_DIR,
-        "blockStore_test");
-    levelDbDataSource.initDB();
-    String lastHash = "lastHash";
-    byte[] key = lastHash.getBytes();
-    String value = "090383489592535";
-    byte[] values = value.getBytes();
-    levelDbDataSource.putData(key, values);
-
-    blockchain.addBlock(block);
-    levelDbDataSource.closeDB();
+    blockchain.addBlock(testBlock);
   }
 
 }
