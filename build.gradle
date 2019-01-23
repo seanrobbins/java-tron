@@ -30,6 +30,8 @@ sourceCompatibility = 1.8
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 mainClassName = 'org.tron.program.FullNode'
 
+check.dependsOn(jacocoTestReport)
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
